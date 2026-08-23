@@ -9,25 +9,26 @@ gid=${GID:-1000}
 backup_dir_name=${BACKUP_DIR:-backups}
 backup_dir=$mounted_dir/$backup_dir_name
 
-spt_version=${SPT_VERSION:-4.0.13-40087-2891fd4}
+spt_version=${SPT_VERSION:-4.1.3-40743-ddce41c=}
 spt_version=$(echo $spt_version | cut -d '-' -f 1)
 spt_backup_dir=$backup_dir/spt/$(date +%Y%m%dT%H%M)
 # if force spt version, ignore all version checks and disable user folder backup
 force_spt_version=${FORCE_SPT_VERSION:=}
 forced_spt_version_archive=SPT-${force_spt_version}.7z
 
-nodejs_spt_data_dir=$mounted_dir/SPT_Data
-spt_nodejs_core_config=$nodejs_spt_data_dir/Server/configs/core.json
 spt_dir=$mounted_dir/SPT
-spt_data_dir=$spt_dir/SPT_Data
+spt_data_dir=$spt_dir/SPT_Runtime/SPT_Data
+nodejs_spt_data_dir=$spt_data_dir
+spt_nodejs_core_config=$nodejs_spt_data_dir/Server/configs/core.json
+
 enable_spt_listen_on_all_networks=${LISTEN_ALL_NETWORKS:-false}
 
 
-fika_version=${FIKA_VERSION:-2.3.2}
+fika_version=${FIKA_VERSION:-2.4.0}
 fika_mode=${FIKA_MODE:-disabled}
 fika_backup_dir=$backup_dir/fika/$(date +%Y%m%dT%H%M)
 fika_config_path=assets/configs/fika.jsonc
-fika_mod_dir=$spt_dir/user/mods/fika-server
+fika_mod_dir=$spt_dir/SPT_Runtime/user/mods/fika-server
 fika_artifact=Fika.Server.Release.$fika_version.zip
 fika_release_url="https://github.com/project-fika/Fika-Server-CSharp/releases/download/v$fika_version/$fika_artifact"
 fika_remote_SHA=$(curl -s "https://api.github.com/repos/project-fika/Fika-Server-CSharp/git/refs/tags/v$fika_version" | grep -oP '"sha":\s*"\K[^"]+')
@@ -80,12 +81,6 @@ enforce_spt_4_structure() {
     fi
 }
 
-# Deprecated
-# TODO Remove this functionality, it is now built into SPT Server
-start_crond() {
-    echo "Enabling profile backups"
-    /etc/init.d/cron start
-}
 
 create_running_user() {
     echo "Checking running user/group: $uid:$gid"
@@ -140,7 +135,7 @@ validate() {
 
     if [[ -d $spt_data_dir ]]; then
         # Grab version from binary using exiftool
-        existing_spt_version=$(exiftool -s -s -s -ProductVersion $spt_dir/SPT.Server.dll | cut -d '-' -f 1)
+        existing_spt_version=$(exiftool -s -s -s -ProductVersion $spt_dir/SPT_Runtime/SPT.Server.dll | cut -d '-' -f 1)
         if [[ -n ${force_spt_version} ]]; then
             # Force download SPT archive and install, do not backup or validate
             install_spt
@@ -236,7 +231,7 @@ install_fika_mod() {
     # Assumes fika_server.zip artifact contains user/mods/fika-server
     curl -sL $fika_release_url -O
     unzip -q $fika_artifact -d $mounted_dir/temp_fika/
-    mv $mounted_dir/temp_fika/SPT/user/mods/fika-server $spt_dir/user/mods/
+    mv $mounted_dir/temp_fika/SPT_Runtime/user/mods/fika-server $fika_mod_dir
     rm -r $mounted_dir/temp_fika
     rm $fika_artifact
     echo "Installation complete"
@@ -283,8 +278,9 @@ install_spt() {
         cd ${mounted_dir}
         # check if archive already exists, and extract if so
         if [[ ! -f ${forced_spt_version_archive} ]]; then
-            echo "Downloading https://spt-releases.modd.in/SPT-${force_spt_version}.7z"
-            curl -sL "https://spt-releases.modd.in/SPT-${force_spt_version}.7z" -o ${forced_spt_version_archive}
+            SPT_RELEASE_URL="https://mirror.sp-tushonka.com/releases/SPT-${force_spt_version}.7z"
+            echo "Downloading $SPT_RELEASE_URL"
+            curl -sL "$SPT_RELEASE_URL" -o ${forced_spt_version_archive}
             # Remove the server files, since databases tend to be different between versions
             rm -rf $spt_data_dir
             7zz x ${forced_spt_version_archive} -aoa
@@ -295,8 +291,12 @@ install_spt() {
     else
         # Remove the server files, since databases tend to be different between versions
         rm -rf $spt_data_dir
-        cp -r $build_dir/* $mounted_dir
+
+        # Recreate base SPT folder so the pre-installed SPT version can be re-installed
+        mkdir -p $spt_dir
+        cp -r $build_dir/* $spt_dir
     fi
+
     make_and_own_spt_dirs
 }
 
@@ -349,7 +349,7 @@ spt_listen_on_all_networks() {
 install_requested_mods() {
     # Run the download & install mods script
     echo "Downloading and installing other mods"
-    /usr/bin/download_unzip_install_mods $spt_dir
+    /usr/bin/download_unzip_install_mods $mounted_dir
 }
 
 ##############
@@ -359,7 +359,7 @@ install_requested_mods() {
 validate
 
 # If no server binary in this directory, copy our built files in here and run it once
-if [[ ! -f "$spt_dir/$spt_binary" ]]; then
+if [[ ! -f "$spt_dir/SPT_Runtime/$spt_binary" ]]; then
     echo "Server files not found, initializing first boot..."
     install_spt
 else
@@ -370,6 +370,14 @@ fi
 if [[ "$enable_spt_listen_on_all_networks" == "true" ]]; then
     spt_listen_on_all_networks
 fi
+
+
+set_num_headless_profiles
+
+if [[ "$install_other_mods" == "true" ]]; then
+    install_requested_mods
+fi
+
 
 # Install fika based on FIKA_MODE. Run each boot to support installing in existing serverfiles that don't have fika installed
 case "$fika_mode" in
@@ -392,22 +400,6 @@ case "$fika_mode" in
         ;;
 esac
 
-set_num_headless_profiles
-
-if [[ "$install_other_mods" == "true" ]]; then
-    install_requested_mods
-fi
-
-if [[ "$enable_profile_backup" == "true" ]]; then
-    echo "  ==============="
-    echo "  === WARNING ==="
-    echo ""
-    echo "  This profile backup feature will be deprecated in the near future"
-    echo "  since it is now built into SPT Server"
-    echo "  ==============="
-    start_crond
-fi
-
 create_running_user
 
 # Own mounted files as running user
@@ -416,4 +408,4 @@ set_permissions
 
 set_timezone
 
-su - $(id -nu $uid) -c "cd $spt_dir && ./$spt_binary"
+su - $(id -nu $uid) -c "cd $spt_dir/SPT_Runtime && ./$spt_binary"
