@@ -16,10 +16,9 @@ spt_backup_dir=$backup_dir/spt/$(date +%Y%m%dT%H%M)
 force_spt_version=${FORCE_SPT_VERSION:=}
 forced_spt_version_archive=SPT-${force_spt_version}.7z
 
-spt_dir=$mounted_dir/SPT
-spt_data_dir=$spt_dir/SPT_Runtime/SPT_Data
-nodejs_spt_data_dir=$spt_data_dir
-spt_nodejs_core_config=$nodejs_spt_data_dir/Server/configs/core.json
+spt_dir=$mounted_dir/SPT_Runtime
+spt_data_dir=$spt_dir/SPT_Data
+spt_nodejs_core_config=$spt_data_dir/configs/core.json
 
 enable_spt_listen_on_all_networks=${LISTEN_ALL_NETWORKS:-false}
 
@@ -28,10 +27,9 @@ fika_version=${FIKA_VERSION:-2.4.0}
 fika_mode=${FIKA_MODE:-disabled}
 fika_backup_dir=$backup_dir/fika/$(date +%Y%m%dT%H%M)
 fika_config_path=assets/configs/fika.jsonc
-fika_mod_dir=$spt_dir/SPT_Runtime/user/mods/fika-server
+fika_mod_dir=$spt_dir/user/mods/fika-server
 fika_artifact=Fika.Server.Release.$fika_version.zip
 fika_release_url="https://github.com/project-fika/Fika-Server-CSharp/releases/download/v$fika_version/$fika_artifact"
-fika_remote_SHA=$(curl -s "https://api.github.com/repos/project-fika/Fika-Server-CSharp/git/refs/tags/v$fika_version" | grep -oP '"sha":\s*"\K[^"]+')
 
 auto_update_spt=${AUTO_UPDATE_SPT:-false}
 
@@ -67,19 +65,6 @@ num_headless_profiles=${NUM_HEADLESS_PROFILES:+"$NUM_HEADLESS_PROFILES"}
 
 install_other_mods=${INSTALL_OTHER_MODS:-false}
 
-enforce_spt_4_structure() {
-    # detect SPT 4 files in serverfiles root, if exists move everything into SPT/ subdirectory
-    if [[ -f $mounted_dir/$spt_binary ]]; then
-        echo "Enforcing SPT 4.0 structure"
-        mkdir -p $spt_dir
-        for item in $mounted_dir/*; do
-            base_item=$(basename "$item")
-            if [ "$base_item" != "SPT" ]; then
-                mv "$item" $spt_dir
-            fi
-        done
-    fi
-}
 
 
 create_running_user() {
@@ -115,7 +100,7 @@ validate() {
     # If we have sptVersion in the core config, this means this existing server <= SPT v3
     # If existing SPT major version is less than 4, existing files are not compatible
     echo "Validating SPT version"
-    if [[ -d $nodejs_spt_data_dir && -f $spt_nodejs_core_config ]]; then
+    if [[ -d $spt_data_dir && -f $spt_nodejs_core_config ]]; then
         existing_spt_version=$(jq -r '.sptVersion' $spt_nodejs_core_config)
         if [[ $existing_spt_version != "null" && $existing_spt_version != "$spt_version" ]]; then
             echo "  ==================="
@@ -131,15 +116,20 @@ validate() {
         fi
     fi
 
-    enforce_spt_4_structure
+
 
     if [[ -d $spt_data_dir ]]; then
         # Grab version from binary using exiftool
-        existing_spt_version=$(exiftool -s -s -s -ProductVersion $spt_dir/SPT_Runtime/SPT.Server.dll | cut -d '-' -f 1)
+        existing_spt_version=$(exiftool -s -s -s -ProductVersion $spt_dir/SPT.Server.dll | cut -d '-' -f 1)
+
+        echo "Found existing SPT Version $existing_spt_version"
+
         if [[ -n ${force_spt_version} ]]; then
             # Force download SPT archive and install, do not backup or validate
+            echo "Installing Requested SPT version"
             install_spt
         elif [[ $existing_spt_version != "$spt_version" ]]; then
+            echo "Attempting to Update SPT"
             try_update_spt $existing_spt_version
         fi
 
@@ -153,10 +143,14 @@ validate() {
                 ;;
             install|auto-update)
                 if [[ -f $fika_mod_dir/FikaServer.dll ]]; then
-                    fika_local_SHA=$(exiftool -s -s -s -ProductVersion $fika_mod_dir/FikaServer.dll | grep -oP '[0-9.]+\+\K.*')
+                    fika_local_version=$(exiftool -s -s -s -ProductVersion $fika_mod_dir/FikaServer.dll)
+                    
+                    echo "Extracted Fika Version $fika_local_version"
                 fi
-                if [[ "$fika_local_SHA" != "$fika_remote_SHA" ]]; then
-                    echo "Fika SHA mismatch: found:$fika_local_SHA != expected:$fika_remote_SHA"
+
+                if [[ "$fika_local_version" != "$fika_version" ]]; then
+                    echo "Fika Version mismatch: already installed $fika_local_version but user requested $fika_version"
+
                     if [[ "$fika_mode" == "auto-update" ]]; then
                         echo "Auto-updating Fika version to $fika_version"
                         try_update_fika
@@ -283,18 +277,18 @@ install_spt() {
             curl -sL "$SPT_RELEASE_URL" -o ${forced_spt_version_archive}
             # Remove the server files, since databases tend to be different between versions
             rm -rf $spt_data_dir
-            7zz x ${forced_spt_version_archive} -aoa
+            7z x ${forced_spt_version_archive} -aoa
         else
             echo "Version already downloaded and presumed installed. Skipping SPT installation."
             echo "If you want to force reinstall this server version ${force_spt_version}, remove the SPT-*.7z archive in your mounted server files directory."
         fi
     else
-        # Remove the server files, since databases tend to be different between versions
+        echo "Installing Pre-installed SPT"
+        # Remove the server files, since databases tend to be different between versions (this does nothing on initial boot)
         rm -rf $spt_data_dir
 
-        # Recreate base SPT folder so the pre-installed SPT version can be re-installed
-        mkdir -p $spt_dir
-        cp -r $build_dir/* $spt_dir
+        # Copy all the SPT files to the mounted directory
+        cp -r $build_dir/* $mounted_dir
     fi
 
     make_and_own_spt_dirs
@@ -359,7 +353,7 @@ install_requested_mods() {
 validate
 
 # If no server binary in this directory, copy our built files in here and run it once
-if [[ ! -f "$spt_dir/SPT_Runtime/$spt_binary" ]]; then
+if [[ ! -f "$spt_dir/$spt_binary" ]]; then
     echo "Server files not found, initializing first boot..."
     install_spt
 else
@@ -408,4 +402,4 @@ set_permissions
 
 set_timezone
 
-su - $(id -nu $uid) -c "cd $spt_dir/SPT_Runtime && ./$spt_binary"
+su - $(id -nu $uid) -c "cd $spt_dir && ./$spt_binary"
