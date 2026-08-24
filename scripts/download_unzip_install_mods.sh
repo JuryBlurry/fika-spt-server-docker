@@ -23,13 +23,14 @@
 # Get the passed in mounted_dir variable
 mounted_dir=$1
 
+spt_dir=$mounted_dir/SPT_Runtime
 mod_download_dirname=mod_download
-mod_download_dir="$mounted_dir/SPT/$mod_download_dirname"
+mod_download_dir="$mounted_dir/$mod_download_dirname"
 mod_download_remains_relative_dir="$mod_download_dirname/remains"
-mod_download_remains_dir="$mounted_dir/SPT/$mod_download_remains_relative_dir"
+mod_download_remains_dir="$mounted_dir/$mod_download_remains_relative_dir"
 
-plugins_mod_dir="$mounted_dir/SPT/BepInEx/plugins"
-user_mod_dir="$mounted_dir/SPT/SPT_Runtime/user/mods"
+plugins_mod_dir="$mounted_dir/BepInEx/plugins"
+user_mod_dir="$spt_dir/user/mods"
 
 # File for mod urls the user requests to be downloaded
 mod_urls_to_download_filename=mod_urls_to_download.txt
@@ -40,7 +41,7 @@ mod_urls_downloaded_filepath="$mod_download_dir/mod_urls_downloaded.txt"
 
 # File to output logs, including wget and upzip commands.
 download_unzip_install_logs_relative_filepath="$mod_download_dirname/download_unzip_install_mods.log"
-download_unzip_install_logs_filepath="$mounted_dir/SPT/$download_unzip_install_logs_relative_filepath"
+download_unzip_install_logs_filepath="$mounted_dir/$download_unzip_install_logs_relative_filepath"
 
 # Download to and unzip in the tmp directory
 tmp_download_dir=/tmp/download_mods
@@ -214,8 +215,6 @@ move_extracted_files() {
     mkdir -p $plugins_mod_dir
     mkdir -p $user_mod_dir
 
-    spt_runtime_dir=$mounted_dir/SPT/SPT_Runtime
-
     # Copy any extracted loose dll files, move them to BepInEx/plugins.
     cp $tmp_extracted_dir/*.dll $plugins_mod_dir 2> /dev/null
     rm $tmp_extracted_dir/*.dll 2> /dev/null
@@ -226,20 +225,20 @@ move_extracted_files() {
     rm -rf $tmp_extracted_dir/BepInEx 2> /dev/null
 
     # Copy the user/mods directory to where it needs to go and the cleanup
-    cp -rf $tmp_extracted_dir/SPT/* $spt_runtime_dir 2> /dev/null
+    cp -rf $tmp_extracted_dir/SPT/* $spt_dir 2> /dev/null
     rm -rf $tmp_extracted_dir/SPT 2> /dev/null
 
-    cp -rf $tmp_extracted_dir/SPT_Runtime/* $spt_runtime_dir 2> /dev/null
+    cp -rf $tmp_extracted_dir/SPT_Runtime/* $spt_dir 2> /dev/null
     rm -rf $tmp_extracted_dir/SPT_Runtime 2> /dev/null
 
     # Move any txt or md files (usually with licenses and readme's) and executables (like ModSync and SVM) to the parent directory
-    cp $tmp_extracted_dir/*.txt $spt_runtime_dir 2> /dev/null
+    cp $tmp_extracted_dir/*.txt $spt_dir 2> /dev/null
     rm $tmp_extracted_dir/*.txt 2> /dev/null
 
-    cp $tmp_extracted_dir/*.md $spt_runtime_dir 2> /dev/null
+    cp $tmp_extracted_dir/*.md $spt_dir 2> /dev/null
     rm $tmp_extracted_dir/*.md 2> /dev/null
 
-    cp $tmp_extracted_dir/*.exe $spt_runtime_dir 2> /dev/null
+    cp $tmp_extracted_dir/*.exe $spt_dir 2> /dev/null
     rm $tmp_extracted_dir/*.exe 2> /dev/null
 }
 
