@@ -232,22 +232,31 @@ install_fika_mod() {
 }
 
 backup_fika() {
-    mkdir -p $fika_backup_dir
-    cp -r $fika_mod_dir $fika_backup_dir
+    # If there's something to backup, backup.
+    if [[ -d $fika_mod_dir ]]; then
+        mkdir -p $fika_backup_dir
+        cp -r $fika_mod_dir $fika_backup_dir
+    fi
 }
 
 try_update_fika() {
     echo "Updating Fika servermod in place to $fika_version"
+    
     # Backup entire fika servermod, then delete and update servermod
     backup_fika
-    rm -r $fika_mod_dir
+    rm -rf $fika_mod_dir
+
     install_fika_mod
+
     # restore config
     mkdir -p $fika_mod_dir/assets/configs
+
     existing_fika_config=$fika_backup_dir/fika-server/$fika_config_path
+
     if [[ -f $existing_fika_config ]]; then
         cp $existing_fika_config $fika_mod_dir/$fika_config_path
     fi
+
     echo "Successfully updated Fika to $fika_version"
 }
 
