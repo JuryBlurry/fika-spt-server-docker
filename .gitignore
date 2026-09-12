@@ -3,3 +3,5 @@
 
 # Pre-commit cache
 .pre-commit-cache/
+
+k-server/
