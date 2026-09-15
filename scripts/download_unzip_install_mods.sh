@@ -221,9 +221,6 @@ move_extracted_files() {
     rm -rf $tmp_extracted_dir/BepInEx 2> /dev/null
 
     # Copy the user/mods directory to where it needs to go and the cleanup
-    cp -rf $tmp_extracted_dir/SPT/* $spt_dir 2> /dev/null
-    rm -rf $tmp_extracted_dir/SPT 2> /dev/null
-
     cp -rf $tmp_extracted_dir/SPT_Runtime/* $spt_dir 2> /dev/null
     rm -rf $tmp_extracted_dir/SPT_Runtime 2> /dev/null
 
@@ -234,7 +231,7 @@ move_extracted_files() {
     cp $tmp_extracted_dir/*.md $spt_dir 2> /dev/null
     rm $tmp_extracted_dir/*.md 2> /dev/null
 
-    cp $tmp_extracted_dir/*.exe $spt_dir 2> /dev/null
+    cp $tmp_extracted_dir/*.exe $mounted_dir 2> /dev/null
     rm $tmp_extracted_dir/*.exe 2> /dev/null
 }
 
