@@ -371,10 +371,12 @@ if [[ -n "$spt_backend_ip" && -n "$spt_backend_port" ]]; then
     # Update the http.json values with the ones passed in as environment vars
     jq --arg jq_spt_backend_ip $spt_backend_ip \
        --arg jq_spt_backend_port $spt_backend_port \
-       '.ip = $jq_spt_backend_ip | .backendIp = $jq_spt_backend_ip | .backendPort = ($jq_spt_backend_port | tonumber)' $http_json > $http_path/tmp.json
+       '.backendIp = $jq_spt_backend_ip | .backendPort = ($jq_spt_backend_port | tonumber)' $http_json > $http_path/tmp.json
 
     # Update the servers http.json with the changes
     cat $http_path/tmp.json > $http_json
+
+    # Cleanup
     rm $http_path/tmp.json
 fi
 
