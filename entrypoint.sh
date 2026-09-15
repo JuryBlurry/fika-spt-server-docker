@@ -6,6 +6,9 @@ spt_binary=SPT.Server.Linux
 uid=${UID:-1000}
 gid=${GID:-1000}
 
+spt_backend_ip=${SPT_BACKEND_IP:-127.0.0.1}
+spt_backend_port=${SPT_BACKEND_PORT:-6969}
+
 backup_dir_name=${BACKUP_DIR:-backups}
 backup_dir=$mounted_dir/$backup_dir_name
 
@@ -334,16 +337,6 @@ try_update_spt() {
     exit 0
 }
 
-spt_listen_on_all_networks() {
-    # Changes the ip and backendIp to 0.0.0.0 so that the server will listen on all network interfaces.
-    http_json=$spt_data_dir/configs/http.json
-    modified_http_json="$(jq '.ip = "0.0.0.0" | .backendIp = "0.0.0.0"' $http_json)" && echo -E "${modified_http_json}" > $http_json
-    # If fika server config exists, modify that too
-    if [[ -f "$fika_mod_dir/$fika_config_path" ]]; then
-        echo "Setting listen all networks in Fika SPT config override"
-        modified_fika_jsonc="$(jq '.server.SPT.http.ip = "0.0.0.0" | .server.SPT.http.backendIp = "0.0.0.0"' $fika_mod_dir/$fika_config_path)" && echo -E "${modified_fika_jsonc}" > $fika_mod_dir/$fika_config_path
-    fi
-}
 
 ##############
 # Other Mods #
@@ -369,9 +362,20 @@ else
     echo "Found server files, skipping init"
 fi
 
-# Install listen on all interfaces is requested.
-if [[ "$enable_spt_listen_on_all_networks" == "true" ]]; then
-    spt_listen_on_all_networks
+# Set SPT Backend IP and Port if provided
+if [[ -n "$spt_backend_ip" && -n "$spt_backend_port" ]]; then
+    echo "Setting SPT Backend IP to $spt_backend_ip and Port to $spt_backend_port"
+    http_path=$spt_data_dir/configs/
+    http_json=$http_path/http.json
+
+    # Update the http.json values with the ones passed in as environment vars
+    jq --arg jq_spt_backend_ip $spt_backend_ip \
+       --arg jq_spt_backend_port $spt_backend_port \
+       '.ip = $jq_spt_backend_ip | .backendIp = $jq_spt_backend_ip | .backendPort = ($jq_spt_backend_port | tonumber)' $http_json > $http_path/tmp.json
+
+    # Update the servers http.json with the changes
+    cat $http_path/tmp.json > $http_json
+    rm $http_path/tmp.json
 fi
 
 

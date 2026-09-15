@@ -3,7 +3,7 @@
 # - ARM64: Compiles from source (necessary for ARM support)
 
 # Stage 1: Download pre-compiled binaries for AMD64 OR build from source for ARM64
-FROM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim AS builder
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS builder
 
 ARG SPT_VERSION=4.0.13-40087-2891fd4
 ARG TARGETARCH
@@ -39,7 +39,7 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
 RUN if [ "$TARGETARCH" = "amd64" ]; then \
         echo "=== AMD64: Extracting archive ===" && \
         mkdir -p spt
-        7zr x spt.7z -o spt; \
+        7zr x spt.7z -o spt/; \
     else \
         echo "=== ARM64: Pulling LFS files ===" && \
         cd spt && \
