@@ -23,10 +23,8 @@ spt_dir=$mounted_dir/SPT_Runtime
 spt_data_dir=$spt_dir/SPT_Data
 spt_nodejs_core_config=$spt_data_dir/configs/core.json
 
-enable_spt_listen_on_all_networks=${LISTEN_ALL_NETWORKS:-false}
 
-
-fika_version=${FIKA_VERSION:-2.4.0}
+fika_version=${FIKA_VERSION:-2.4.1}
 fika_mode=${FIKA_MODE:-disabled}
 fika_backup_dir=$backup_dir/fika/$(date +%Y%m%dT%H%M)
 fika_config_path=assets/configs/fika.jsonc
@@ -365,19 +363,16 @@ fi
 # Set SPT Backend IP and Port if provided
 if [[ -n "$spt_backend_ip" && -n "$spt_backend_port" ]]; then
     echo "Setting SPT Backend IP to $spt_backend_ip and Port to $spt_backend_port"
-    http_path=$spt_data_dir/configs/
-    http_json=$http_path/http.json
+    http_json=$spt_data_dir/configs/http.json
 
     # Update the http.json values with the ones passed in as environment vars
-    jq --arg jq_spt_backend_ip $spt_backend_ip \
+    modified_http_json=$(\
+       jq --arg jq_spt_backend_ip $spt_backend_ip \
        --arg jq_spt_backend_port $spt_backend_port \
-       '.backendIp = $jq_spt_backend_ip | .backendPort = ($jq_spt_backend_port | tonumber)' $http_json > $http_path/tmp.json
+       '.backendIp = $jq_spt_backend_ip | .backendPort = ($jq_spt_backend_port | tonumber)' $http_json\
+   )
 
-    # Update the servers http.json with the changes
-    cat $http_path/tmp.json > $http_json
-
-    # Cleanup
-    rm $http_path/tmp.json
+    echo -E "${modified_http_json}" > $http_json
 fi
 
 
