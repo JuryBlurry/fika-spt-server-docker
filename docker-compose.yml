@@ -1,12 +1,10 @@
 services:
   fika-server:
     container_name: spt-server
-    image: fika-spt-server-docker:latest
+    image: ghcr.io/zhliau/fika-spt-server-docker:latest
     ports:
       - 6969:6969
     environment:
-      - SPT_BACKEND_IP=192.168.1.15 # 0.0.0.0 will listen to all networks, change this to tell the SPT client the IP to connect in order to load profiles
-      - SPT_BACKEND_PORT=443 # If you use a reverse proxy and need a custom port to reach from the client to your reverse proxy before connecting with this container
 
       # Provide the uid/gid of the user, or it will default to 0 (root)
       - UID=1000
@@ -14,7 +12,7 @@ services:
       # FIKA_MODE controls Fika installation and updates
       # Options: disabled (no Fika), install (install and validate), auto-update (auto-update on mismatch), custom (skip validation)
       - FIKA_MODE=auto-update
-      - FIKA_VERSION=2.4.0
+      - FIKA_VERSION=2.4.1
 
       # If you want the container to update SPT automatically if it detects the SPT server version does not match expected version, set this to true
       - AUTO_UPDATE_SPT=true
