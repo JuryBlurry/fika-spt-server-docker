@@ -362,7 +362,7 @@ fi
 
 # Set SPT Backend IP and Port if provided
 if [[ -n "$spt_backend_ip" && -n "$spt_backend_port" ]]; then
-    echo "Setting SPT Backend IP to $spt_backend_ip and Port to $spt_backend_port"
+    echo "Setting SPT Backend IP to $spt_backend_ip and Port to $spt_backend_port to http.json and fika.jsonc"
     http_json=$spt_data_dir/configs/http.json
 
     # Update the http.json values with the ones passed in as environment vars
@@ -372,7 +372,18 @@ if [[ -n "$spt_backend_ip" && -n "$spt_backend_port" ]]; then
        '.backendIp = $jq_spt_backend_ip | .backendPort = ($jq_spt_backend_port | tonumber)' $http_json\
    )
 
-    echo -E "${modified_http_json}" > $http_json
+   echo -E "${modified_http_json}" > $http_json
+
+   # Update the fika.jsonc as it will overwrite the http.json
+   fika_jsonc=$spt_dir/user/mods/fika-server/assets/configs/fika.jsonc
+
+   modified_fika_jsonc=$(\
+       jq --arg jq_spt_backend_ip $spt_backend_ip \
+       --arg jq_spt_backend_port $spt_backend_port \
+       '.Server.SPT.http.backendIp = $jq_spt_backend_ip | .backendPort = ($jq_spt_backend_port | tonumber)' $fika_jsonc\
+   )
+
+   echo -E "${modified_fika_jsonc}" > $fika_jsonc
 fi
 
 
