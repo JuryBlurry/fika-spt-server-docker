@@ -9,5 +9,5 @@ docker build . \
     --build-arg BUILD_TYPE=$build_type \
     --build-arg SPT_VERSION=$spt_release_version \
     --build-arg FIKA_VERSION=$fika_version \
-    -t fika-spt-server-docker:$version_tag
+    -t fika-spt-server-docker:$version_tag \
     -t fika-spt-server-docker:4.1.6 $@
