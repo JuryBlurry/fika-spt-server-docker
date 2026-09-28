@@ -12,7 +12,7 @@ spt_backend_port=${SPT_BACKEND_PORT:-6969}
 backup_dir_name=${BACKUP_DIR:-backups}
 backup_dir=$mounted_dir/$backup_dir_name
 
-spt_version=${SPT_VERSION:-4.1.5-40743-7d7add5}
+spt_version=${SPT_VERSION:-4.1.6-40743-731d7a2}
 spt_version=$(echo $spt_version | cut -d '-' -f 1)
 spt_backup_dir=$backup_dir/spt/$(date +%Y%m%dT%H%M)
 # if force spt version, ignore all version checks and disable user folder backup
@@ -145,7 +145,7 @@ validate() {
             install|auto-update)
                 if [[ -f $fika_mod_dir/FikaServer.dll ]]; then
                     fika_local_version=$(exiftool -s -s -s -ProductVersion $fika_mod_dir/FikaServer.dll)
-                    
+
                     echo "Extracted Fika Version $fika_local_version"
                 fi
 
@@ -242,7 +242,7 @@ backup_fika() {
 
 try_update_fika() {
     echo "Updating Fika servermod in place to $fika_version"
-    
+
     # Backup entire fika servermod, then delete and update servermod
     backup_fika
     rm -rf $fika_mod_dir
